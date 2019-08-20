@@ -39,7 +39,7 @@ func main() {
 	http.HandleFunc("/receive", creds.receiveHandler)
 	http.HandleFunc("/.well-known/health-check", healthCheckHandler)
 
-	log.Fatal(http.ListenAndServe(":8000", nil))
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 func (creds *BasicAuthCredentials) receiveHandler(w http.ResponseWriter, r *http.Request) {

@@ -1,8 +1,8 @@
-FROM golang:alpine as build-env
+FROM golang:1.12.9-alpine as build-env
 
 RUN mkdir /build 
 
-ADD . /build/
+ADD main.go /build/
 
 WORKDIR /build 
 
