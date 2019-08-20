@@ -1,0 +1,14 @@
+version: '3.4'
+services:
+  web:
+    build: 
+      context: .
+      target: build-env
+    volumes:
+      - .:/app
+      - ./storage:/app/storage
+    ports:
+      - '8000:8000'
+    env_file:
+      - .env.local
+    command: 'go run main.go'
