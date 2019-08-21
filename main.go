@@ -20,6 +20,11 @@ type BasicAuthCredentials struct {
 	password string
 }
 
+var permissableContentTypes = map[string]bool{
+	"application/x-gzip": true,
+	"application/pdf":    true,
+}
+
 func main() {
 
 	basicAuthUsername, ok := os.LookupEnv("BASIC_AUTH_USERNAME")
@@ -66,8 +71,8 @@ func (creds *BasicAuthCredentials) receiveHandler(w http.ResponseWriter, r *http
 
 	contentType := http.DetectContentType(buffer)
 
-	if contentType != "application/pdf" {
-		fmt.Printf("Expected ContentType to be application/pdf. Got %s.\n", contentType)
+	if !permissableContentTypes[contentType] {
+		fmt.Printf("Expected ContentType to be any of %v. Got %s.\n", permissableContentTypes, contentType)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
