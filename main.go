@@ -20,9 +20,9 @@ type BasicAuthCredentials struct {
 	password string
 }
 
-var permissableContentTypes = map[string]bool{
-	"application/x-gzip": true,
-	"application/pdf":    true,
+var contentTypeExtension = map[string]string{
+	"application/zip": ".pdf.zip",
+	"application/pdf": ".pdf",
 }
 
 func main() {
@@ -53,38 +53,36 @@ func (creds *BasicAuthCredentials) receiveHandler(w http.ResponseWriter, r *http
 
 	username, password, ok := r.BasicAuth()
 
-	if !ok {
-		fmt.Println("Could not check basic auth credentials.")
-		return
-	}
-
-	if username != creds.username && password != creds.password {
+	if !ok || !(username == creds.username && password == creds.password) {
+		fmt.Println("Authorization failed for client.")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
 	buffer := make([]byte, 512)
 	if _, err := r.Body.Read(buffer); err != nil && err != io.EOF {
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Fatal(err)
 		return
 	}
 
 	contentType := http.DetectContentType(buffer)
 
-	if !permissableContentTypes[contentType] {
-		fmt.Printf("Expected ContentType to be any of %v. Got %s.\n", permissableContentTypes, contentType)
+	if _, ok := contentTypeExtension[contentType]; !ok {
+		fmt.Printf("Expected ContentType to be any of %v. Got %s.\n", contentTypeExtension, contentType)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	t := time.Now()
-	timestampedFilename := t.Format("2006-01-02-15-04-05.pdf")
+	timestampedFilename := t.Format(fmt.Sprintf("2006-01-02-15-04-05%s", contentTypeExtension[contentType]))
 
 	filePath := filepath.Join(StoragePath, timestampedFilename)
 
 	file, err := os.Create(filePath)
 
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Fatal(err)
 		return
 	}
@@ -98,18 +96,19 @@ func (creds *BasicAuthCredentials) receiveHandler(w http.ResponseWriter, r *http
 	fileWriter := bufio.NewWriter(file)
 
 	if _, err := io.CopyBuffer(fileWriter, r.Body, nil); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Fatal(err)
 		return
 	}
 
 	if err := fileWriter.Flush(); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Fatal(err)
 		return
 	}
 
 	fmt.Printf("Written file to %s\n", filePath)
-
-	fmt.Fprintf(w, "ok: %s", timestampedFilename)
+	fmt.Fprintf(w, "ok: %s\n", timestampedFilename)
 }
 
 func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
